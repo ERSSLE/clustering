@@ -43,3 +43,75 @@ class KMeans():
         _,self.labels_,self.cluster_centers_ = k_means(X,self._n_cluster)
     def predict(self,X):
         return k_means_predict(X,self.cluster_centers_)
+
+#===============================================================
+#下面对kmeans算法的相似性或距离函数进行了扩展，质心也对应进行了扩展，可以依据场景用不同方法进行kmeans聚类
+#算法停止条件依据聚类类别在迭代中变化比例是否小于等于阈值
+def k_means2(X,n_cluster,target_func='l2',stop_rate=0.0,seed=0):
+    """k-means算法
+    X: 2D-numpy.array数据类型,行代表对象，列代表维度
+    n_cluster: 聚类数量
+    target_func:l2,l1,cosine
+    stop_rate: 聚类停止条件
+    seed: 聚类中心初始化随机种子
+    """
+    np.random.seed(seed)
+    init_cluster_idx = np.random.randint(0,len(X),size=n_cluster)
+    cluster_centers = X[init_cluster_idx]
+    c = None
+    while True:
+        #举例计算借用numpy的广播机制，这样做会使计算更快速
+        if target_func == 'l2':
+            dst = ((X[:,:,np.newaxis] - cluster_centers[np.newaxis,:,:].transpose(0,2,1))**2).sum(1) # L2
+        elif target_func == 'l1':
+            dst = np.abs(X[:,:,np.newaxis] - cluster_centers[np.newaxis,:,:].transpose(0,2,1)).sum(1) # L1
+        elif target_func == 'cosine':
+            dst = np.dot(X,cluster_centers.T) /\
+                (np.sqrt((X**2).sum(1,keepdims=True)) * np.sqrt((cluster_centers**2).sum(1,keepdims=True).T)) # cosine
+        if target_func == 'cosine':
+            new_c = dst.argmax(1)
+        elif target_func in ['l2','l1']:
+            new_c = dst.argmin(1)
+        rate = (c != new_c).sum() / len(new_c)
+        c = new_c
+        if rate <= stop_rate:
+            break
+        else:
+            for i in range(len(cluster_centers)):
+                if target_func == 'l1':
+                    cluster_centers[i] = np.median(X[c==i],axis=0).tolist()
+                elif target_func in ['l2','cosine']:
+                    cluster_centers[i] = X[c==i].mean(0).tolist() 
+    return dst,c,cluster_centers
+
+def k_means_predict2(X,cluster_centers,target_func='l2'):
+    """根据聚类中心对新数据进行归类"""
+    if target_func == 'l2':
+        dst = ((X[:,:,np.newaxis] - cluster_centers[np.newaxis,:,:].transpose(0,2,1))**2).sum(1) # L2
+    elif target_func == 'l1':
+        dst = np.abs(X[:,:,np.newaxis] - cluster_centers[np.newaxis,:,:].transpose(0,2,1)).sum(1) # L1
+    elif target_func == 'cosine':
+        dst = np.dot(X,cluster_centers.T) /\
+            (np.sqrt((X**2).sum(1,keepdims=True)) * np.sqrt((cluster_centers**2).sum(1,keepdims=True).T)) # cosine
+    if target_func == 'cosine':
+        c = dst.argmax(1)
+    elif target_func in ['l2','l1']:
+        c = dst.argmin(1)
+    return c
+
+class KMeans2():
+    """k-means算法的类创建，基于k_means与k_means_predict两个函数"""
+    def __init__(self,n_cluster,target_func='l2',stop_rate=0.0,seed=0):
+        self._n_cluster = n_cluster
+        self._target_func = target_func
+        self._stop_rate = stop_rate
+        self._seed = seed
+    def fit(self,X):
+        dst,self.labels_,self.cluster_centers_ = k_means2(X,self._n_cluster,self._target_func,self._stop_rate,self._seed)
+        if self._target_func == 'cosine':
+            self.avg_score_ = dst.max(1).mean()
+        elif self._target_func in ['l2','l1']:
+            self.avg_score_ = dst.min(1).mean()
+    def predict(self,X):
+        return k_means_predict2(X,self.cluster_centers_,self._target_func)
+
