@@ -77,12 +77,12 @@ def init_centers(X,n_cluster,target_func='l2',method='random',sample=0.05,seed=N
         for i in range(n_cluster-1):
             dst = disfunc(x_samples,cluster_centers,target_func)
             if target_func in ['l2','l1']:
-                dst_selected = dst[(dst==0.0).sum(1)==0]
-                x_samples_selected = x_samples[(dst==0.0).sum(1)==0]
+                dst_selected = dst[(abs(dst)<1e-5).sum(1)==0]
+                x_samples_selected = x_samples[(abs(dst)<1e-5).sum(1)==0]
                 next_idx = dst_selected.sum(1).argmax(0) # 选取分散点，注意避免选取相同点
             elif target_func == 'cosine':
-                dst_selected = dst[(dst==1.0).sum(1)==0]
-                x_samples_selected = x_samples[(dst==1.0).sum(1)==0]
+                dst_selected = dst[(abs(dst-1.0)<1e-5).sum(1)==0]
+                x_samples_selected = x_samples[(abs(dst-1.0)<1e-5).sum(1)==0]
                 next_idx = dst_selected.sum(1).argmin(0) # 选取分散点，注意避免选取相同点
             cluster_centers = np.append(cluster_centers,x_samples_selected[[next_idx]],axis=0)
     return cluster_centers
