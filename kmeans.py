@@ -1,6 +1,6 @@
 # encoding: utf-8
 """
-通过测试，本算法实现比sklearn.cluster.KMeans算法要快很多
+
 """
 
 # original author information
